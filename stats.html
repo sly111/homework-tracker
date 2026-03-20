@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>统计汇总 - 作业打卡记录</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- 顶部导航 -->
+<header class="app-header">
+  <span class="title">统计汇总</span>
+  <div class="header-right">
+    <span id="admin-badge" class="admin-badge" style="display:none">✓ 管理员</span>
+    <div style="position:relative;">
+      <button class="btn-icon" id="btn-admin-toggle" onclick="toggleAdminMenu()">👤</button>
+      <div id="admin-menu" onclick="event.stopPropagation()" style="display:none; position:absolute; top:40px; right:0; background:#fff; border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,0.15); min-width:140px; z-index:301; overflow:hidden;"></div>
+    </div>
+  </div>
+</header>
+
+<!-- 主内容 -->
+<main class="main-content">
+
+  <!-- Tab 切换 -->
+  <div style="display:flex; gap:0; background:var(--card-bg); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; margin-bottom:12px;">
+    <button id="tab-btn-summary" onclick="switchStatsTab('summary')"
+      style="flex:1; padding:12px 4px; font-size:13px; font-weight:600; border:none; cursor:pointer; background:var(--primary); color:#fff; transition:all 0.2s;">
+      📊 班级汇总
+    </button>
+    <button id="tab-btn-class-detail" onclick="switchStatsTab('class-detail')"
+      style="flex:1; padding:12px 4px; font-size:13px; font-weight:600; border:none; cursor:pointer; background:var(--bg); color:var(--text-secondary); transition:all 0.2s;">
+      📋 班级明细
+    </button>
+    <button id="tab-btn-personal" onclick="switchStatsTab('personal')"
+      style="flex:1; padding:12px 4px; font-size:13px; font-weight:600; border:none; cursor:pointer; background:var(--bg); color:var(--text-secondary); transition:all 0.2s;">
+      👤 个人统计
+    </button>
+  </div>
+
+  <!-- ==================== Tab 1: 班级汇总 ==================== -->
+  <div id="tab-summary">
+    <div class="stats-filter card">
+      <div class="filter-row">
+        <span class="filter-label">开始日期</span>
+        <input type="date" id="start-date" class="filter-input">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">结束日期</span>
+        <input type="date" id="end-date" class="filter-input">
+      </div>
+      <div class="filter-row" style="align-items:flex-start;">
+        <span class="filter-label" style="padding-top:6px;">班级</span>
+        <div id="summary-class-checkboxes" style="display:flex; flex-wrap:wrap; gap:6px; flex:1;"></div>
+      </div>
+      <div class="filter-row" style="align-items:flex-start;">
+        <span class="filter-label" style="padding-top:6px;">科目</span>
+        <div id="summary-subject-checkboxes" style="display:flex; flex-wrap:wrap; gap:6px; flex:1;"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="loadSummaryStats()">📊 查询统计</button>
+        <button class="btn-secondary" onclick="exportSummaryExcel()">📥 导出 Excel</button>
+      </div>
+    </div>
+
+    <div id="summary-loading" class="loading-spinner" style="display:none">
+      <div class="spinner"></div><span>统计中...</span>
+    </div>
+
+    <div id="summary-cards" style="display:none">
+      <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:12px;">
+        <div class="card" style="text-align:center; padding:14px 10px;">
+          <div style="font-size:24px; font-weight:700; color:#4caf50;" id="stat-rate">--%</div>
+          <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">整体完成率</div>
+        </div>
+        <div class="card" style="text-align:center; padding:14px 10px;">
+          <div style="font-size:24px; font-weight:700; color:var(--primary);" id="stat-submitted">--</div>
+          <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">已交/优秀人次</div>
+        </div>
+        <div class="card" style="text-align:center; padding:14px 10px;">
+          <div style="font-size:24px; font-weight:700; color:#ff9800;" id="stat-pending">--</div>
+          <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">未交人次</div>
+        </div>
+        <div class="card" style="text-align:center; padding:14px 10px;">
+          <div style="font-size:24px; font-weight:700; color:var(--text-secondary);" id="stat-total">--</div>
+          <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">统计总人次</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="stat-scope" style="display:none; padding:8px 14px; font-size:12px; color:var(--text-secondary); background:var(--bg); border-radius:8px; margin-bottom:10px;"></div>
+
+    <div class="card" id="bar-chart-card" style="display:none; padding:14px;">
+      <div style="font-size:14px; font-weight:600; margin-bottom:12px; color:var(--text);">各班完成率</div>
+      <div id="bar-chart"></div>
+    </div>
+
+    <div class="stats-table-wrapper" id="summary-table-card" style="display:none">
+      <div style="padding:12px 14px; font-size:14px; font-weight:600; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+        <span>各班明细</span>
+        <span id="table-date-range" style="font-size:12px; color:var(--text-secondary);"></span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="stats-table" id="stats-table">
+          <thead>
+            <tr>
+              <th>班级</th>
+              <th>已交</th>
+              <th>优秀</th>
+              <th>未交</th>
+              <th>总人次</th>
+              <th>完成率</th>
+            </tr>
+          </thead>
+          <tbody id="stats-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="summary-empty" class="empty-state" style="display:none">
+      <div class="empty-icon">📭</div>
+      <p>暂无数据<br>请选择日期范围后点击查询</p>
+    </div>
+  </div>
+
+  <!-- ==================== Tab 2: 班级明细 ==================== -->
+  <div id="tab-class-detail" style="display:none">
+    <div class="stats-filter card">
+      <div class="filter-row">
+        <span class="filter-label">班级</span>
+        <select id="cd-class-select" class="filter-input">
+          <option value="">请选择班级</option>
+        </select>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">开始日期</span>
+        <input type="date" id="cd-start-date" class="filter-input">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">结束日期</span>
+        <input type="date" id="cd-end-date" class="filter-input">
+      </div>
+      <div class="filter-row" style="align-items:flex-start;">
+        <span class="filter-label" style="padding-top:6px;">科目</span>
+        <div id="cd-subject-checkboxes" style="display:flex; flex-wrap:wrap; gap:6px; flex:1;"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="loadClassDetail()">📋 查询明细</button>
+        <button class="btn-secondary" onclick="exportClassDetailExcel()">📥 导出 Excel</button>
+      </div>
+    </div>
+
+    <div id="cd-loading" class="loading-spinner" style="display:none">
+      <div class="spinner"></div><span>加载中...</span>
+    </div>
+
+    <!-- 班级明细表格：行=学生，列=日期×科目 -->
+    <div id="cd-table-wrapper" style="display:none">
+      <!-- 状态筛选按钮组 -->
+      <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+        <button class="cd-filter-btn" data-status="" onclick="filterClassDetail('')" style="padding:6px 14px; font-size:12px; border:none; border-radius:16px; cursor:pointer; background:var(--primary); color:#fff;">全部</button>
+        <button class="cd-filter-btn" data-status="未交" onclick="filterClassDetail('未交')" style="padding:6px 14px; font-size:12px; border:none; border-radius:16px; cursor:pointer; background:var(--bg); color:var(--text-secondary);">✗ 未交</button>
+        <button class="cd-filter-btn" data-status="已交" onclick="filterClassDetail('已交')" style="padding:6px 14px; font-size:12px; border:none; border-radius:16px; cursor:pointer; background:var(--bg); color:var(--text-secondary);">✓ 已交</button>
+        <button class="cd-filter-btn" data-status="优秀" onclick="filterClassDetail('优秀')" style="padding:6px 14px; font-size:12px; border:none; border-radius:16px; cursor:pointer; background:var(--bg); color:var(--text-secondary);">★ 优秀</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="stats-table" id="cd-table" style="min-width:400px;">
+          <thead id="cd-thead"></thead>
+          <tbody id="cd-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="cd-empty" class="empty-state" style="display:none">
+      <div class="empty-icon">📭</div>
+      <p>暂无数据<br>请选择班级和日期范围后点击查询</p>
+    </div>
+  </div>
+
+  <!-- ==================== Tab 3: 个人统计 ==================== -->
+  <div id="tab-personal" style="display:none">
+    <div class="stats-filter card">
+      <div class="filter-row">
+        <span class="filter-label">班级</span>
+        <select id="p-class-select" class="filter-input" onchange="loadStudentsForPersonal()">
+          <option value="">请选择班级</option>
+        </select>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">学生</span>
+        <select id="p-student-select" class="filter-input">
+          <option value="">请先选择班级</option>
+        </select>
+      </div>
+      <div class="filter-row" style="align-items:flex-start;">
+        <span class="filter-label" style="padding-top:6px;">科目</span>
+        <div id="p-subject-checkboxes" style="display:flex; flex-wrap:wrap; gap:6px; flex:1;"></div>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">开始日期</span>
+        <input type="date" id="p-start-date" class="filter-input">
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">结束日期</span>
+        <input type="date" id="p-end-date" class="filter-input">
+      </div>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="loadPersonalStats()">👤 查询个人</button>
+      </div>
+    </div>
+
+    <div id="p-loading" class="loading-spinner" style="display:none">
+      <div class="spinner"></div><span>加载中...</span>
+    </div>
+
+    <!-- 个人统计：行=日期，列=科目 -->
+    <div id="p-result" style="display:none">
+      <div class="card" style="margin-bottom:10px; padding:12px 14px;">
+        <div style="font-size:14px; font-weight:600; margin-bottom:8px;" id="p-student-name">--</div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;" id="p-summary-row"></div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="stats-table" id="p-table" style="min-width:300px;">
+          <thead id="p-thead"></thead>
+          <tbody id="p-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="p-empty" class="empty-state" style="display:none">
+      <div class="empty-icon">📭</div>
+      <p>暂无数据<br>请选择学生和日期范围后点击查询</p>
+    </div>
+  </div>
+
+</main>
+
+<!-- 底部导航 -->
+<nav class="bottom-nav">
+  <a class="nav-item" href="index.html">
+    <span class="nav-icon">🏠</span>
+    <span>首页</span>
+  </a>
+  <a class="nav-item" href="class.html">
+    <span class="nav-icon">📋</span>
+    <span>班级</span>
+  </a>
+  <a class="nav-item active" href="stats.html">
+    <span class="nav-icon">📊</span>
+    <span>统计</span>
+  </a>
+</nav>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Supabase CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!-- SheetJS CDN -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/export.js"></script>
+<script src="js/stats.js"></script>
+</body>
+</html>

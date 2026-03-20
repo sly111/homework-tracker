@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>班级详情 - 作业打卡记录</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- 顶部导航 -->
+<header class="app-header">
+  <button class="btn-icon" onclick="history.back()" style="margin-left:-8px">‹</button>
+  <span class="title" id="page-title">班级详情</span>
+  <div class="header-right">
+    <span id="admin-badge" class="admin-badge" style="display:none">✓ 管理员</span>
+    <button class="btn-icon" id="btn-filter" title="筛选班级/科目" onclick="toggleFilterPanel()">🔍</button>
+    <div style="position:relative;">
+      <button class="btn-icon" id="btn-admin-toggle" onclick="toggleAdminMenu()">👤</button>
+      <div id="admin-menu" onclick="event.stopPropagation()" style="display:none; position:absolute; top:40px; right:0; background:#fff; border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,0.15); min-width:140px; z-index:301; overflow:hidden;"></div>
+    </div>
+  </div>
+</header>
+<!-- 筛选面板 overlay -->
+<div id="filter-overlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; z-index:199;" onclick="toggleFilterPanel()"></div>
+
+<!-- 班级/科目筛选面板（弹出式） -->
+<div id="filter-panel" style="display:none; position:fixed; top:56px; left:0; right:0; background:#fff; border-bottom:1px solid var(--border); padding:10px 16px; z-index:200; box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+  <div style="font-size:13px; font-weight:600; color:var(--text); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+    <span>班级筛选</span>
+    <div style="display:flex; gap:8px;">
+      <button onclick="selectAllClasses()" style="font-size:12px; color:var(--primary); background:none; border:none; cursor:pointer;">全选</button>
+      <button onclick="clearAllClasses()" style="font-size:12px; color:var(--text-secondary); background:none; border:none; cursor:pointer;">清空</button>
+    </div>
+  </div>
+  <div id="filter-checkboxes" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;"></div>
+  <div style="font-size:13px; font-weight:600; color:var(--text); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+    <span>科目筛选</span>
+    <div style="display:flex; gap:8px;">
+      <button onclick="selectAllSubjects()" style="font-size:12px; color:var(--primary); background:none; border:none; cursor:pointer;">全选</button>
+      <button onclick="clearAllSubjects()" style="font-size:12px; color:var(--text-secondary); background:none; border:none; cursor:pointer;">清空</button>
+    </div>
+  </div>
+  <div id="filter-subject-checkboxes" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+</div>
+
+<!-- 班级标签栏 -->
+<div class="class-tabs" id="class-tabs">
+  <div class="loading-spinner" style="padding:12px 0">
+    <div class="spinner"></div>
+  </div>
+</div>
+
+<!-- 日期 + 完成率 -->
+<div style="padding: 8px 12px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+  <div class="date-display" id="date-display" onclick="openDatePicker()" style="font-size:14px;">
+    <span id="date-text">加载中...</span>
+  </div>
+  <input type="date" id="date-picker" class="date-input-hidden" onchange="onDateChange(this.value)">
+  <div style="flex:1"></div>
+  <div id="completion-rate" style="font-size:13px; color:#4caf50; font-weight:600;"></div>
+</div>
+
+<!-- 状态说明卡片（可折叠） -->
+<div class="card" style="padding:10px 14px; margin:8px 12px 0;">
+  <div style="display:flex; align-items:center; justify-content:space-between; cursor:pointer;" onclick="toggleLegend()">
+    <span style="font-size:13px; font-weight:600; color:var(--text);">📋 状态说明</span>
+    <span id="legend-arrow" style="font-size:12px; color:var(--text-secondary);">▾</span>
+  </div>
+  <div id="legend-content" style="margin-top:8px; display:flex; gap:14px; flex-wrap:wrap;">
+    <div style="display:flex; align-items:center; gap:5px;">
+      <span style="width:26px; height:26px; border-radius:13px; background:#f0f0f0; border:1.5px dashed #ccc; display:inline-flex; align-items:center; justify-content:center; font-size:12px; color:#666;">—</span>
+      <span style="font-size:12px; color:var(--text-secondary);">未交</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:5px;">
+      <span style="width:26px; height:26px; border-radius:13px; background:#4caf50; display:inline-flex; align-items:center; justify-content:center; font-size:13px; color:#fff;">✓</span>
+      <span style="font-size:12px; color:var(--text-secondary);">已交</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:5px;">
+      <span style="width:26px; height:26px; border-radius:13px; background:#e91e8c; display:inline-flex; align-items:center; justify-content:center; font-size:13px; color:#fff;">★</span>
+      <span style="font-size:12px; color:var(--text-secondary);">优秀</span>
+    </div>
+    <div style="font-size:11px; color:var(--text-secondary); align-self:center;">点击按钮循环切换（管理员）</div>
+  </div>
+</div>
+
+<!-- 科目标签 -->
+<div class="homework-tabs" id="subject-tabs" style="margin: 8px 0 0; padding: 0 12px;">
+  <!-- 动态生成 -->
+</div>
+
+<!-- 作业子标签（同一科目下的多份作业） -->
+<div class="homework-tabs" id="homework-tabs" style="margin: 4px 0 0; padding: 0 12px; min-height: 36px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+  <!-- 动态生成 -->
+</div>
+
+<!-- 学生状态表格 -->
+<div class="homework-table-wrapper" id="table-wrapper">
+  <div class="homework-table-header">
+    <span class="class-title" id="class-title">--</span>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <!-- 学号/姓名切换 -->
+      <button id="btn-view-toggle" onclick="toggleViewMode()"
+        style="font-size:11px; padding:3px 8px; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text-secondary); cursor:pointer;">
+        学号
+      </button>
+    </div>
+  </div>
+
+  <!-- 状态筛选按钮组 + 导出按钮 -->
+  <div id="status-filter-bar" style="display:none; padding:8px 12px; gap:6px; flex-wrap:wrap; align-items:center;">
+    <button class="status-filter-btn" data-filter="" onclick="filterStudentsByStatus('')" style="padding:4px 12px; font-size:11px; border:none; border-radius:14px; cursor:pointer; background:var(--primary); color:#fff;">全部</button>
+    <button class="status-filter-btn" data-filter="未交" onclick="filterStudentsByStatus('未交')" style="padding:4px 12px; font-size:11px; border:none; border-radius:14px; cursor:pointer; background:var(--bg); color:var(--text-secondary);">✗ 未交</button>
+    <button class="status-filter-btn" data-filter="已交" onclick="filterStudentsByStatus('已交')" style="padding:4px 12px; font-size:11px; border:none; border-radius:14px; cursor:pointer; background:var(--bg); color:var(--text-secondary);">✓ 已交</button>
+    <button class="status-filter-btn" data-filter="优秀" onclick="filterStudentsByStatus('优秀')" style="padding:4px 12px; font-size:11px; border:none; border-radius:14px; cursor:pointer; background:var(--bg); color:var(--text-secondary);">★ 优秀</button>
+    <div style="flex:1;"></div>
+    <button onclick="exportStudentList()" style="padding:4px 12px; font-size:11px; border:1px solid var(--primary); border-radius:14px; cursor:pointer; background:#fff; color:var(--primary);">📋 导出名单</button>
+  </div>
+  <!-- 筛选结果名单 -->
+  <div id="filter-result-list" style="display:none; padding:8px 12px; background:#f8f9fa; border-radius:8px; margin:0 12px 8px; font-size:12px;"></div>
+
+  <div class="student-grid" id="student-grid">
+    <div class="loading-spinner">
+      <div class="spinner"></div>
+      <span>加载中...</span>
+    </div>
+  </div>
+
+  <div class="summary-bar" id="summary-bar" style="display:none">
+    <span class="rate" id="summary-rate">--</span>
+    <div class="detail" id="summary-detail"></div>
+  </div>
+</div>
+
+<!-- 新增作业弹窗 -->
+<div id="add-homework-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; z-index:500; background:rgba(0,0,0,0.4); flex-direction:column; align-items:center; justify-content:center; padding:24px;">
+  <div style="background:#fff; border-radius:16px; padding:24px; width:100%; max-width:320px;">
+    <div style="font-size:15px; font-weight:600; margin-bottom:4px;">新增作业</div>
+    <div style="font-size:12px; color:#999; margin-bottom:16px;" id="add-homework-subject-hint">当前科目：语文</div>
+    <input type="text" id="add-homework-input" class="form-input" placeholder="请输入作业名称（如：默写）" style="margin-bottom:16px;">
+    <div style="display:flex; gap:10px;">
+      <button onclick="cancelAddHomework()" class="btn-secondary" style="flex:1; height:40px;">取消</button>
+      <button onclick="confirmAddHomework()" class="btn-primary" style="flex:1; height:40px;">确认新增</button>
+    </div>
+  </div>
+</div>
+
+<!-- 姓名编辑弹窗 -->
+<div id="name-edit-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; z-index:500; background:rgba(0,0,0,0.4); display:none; align-items:center; justify-content:center; padding:24px;">
+  <div style="background:#fff; border-radius:16px; padding:24px; width:100%; max-width:320px;">
+    <div style="font-size:15px; font-weight:600; margin-bottom:16px;" id="name-edit-title">修改姓名</div>
+    <input type="text" id="name-edit-input" class="form-input" placeholder="请输入姓名" style="margin-bottom:16px;">
+    <div style="display:flex; gap:10px;">
+      <button onclick="cancelNameEdit()" class="btn-secondary" style="flex:1; height:40px;">取消</button>
+      <button onclick="confirmNameEdit()" class="btn-primary" style="flex:1; height:40px;">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 底部导航 -->
+<nav class="bottom-nav">
+  <a class="nav-item" href="index.html">
+    <span class="nav-icon">🏠</span>
+    <span>首页</span>
+  </a>
+  <a class="nav-item active" href="class.html">
+    <span class="nav-icon">📋</span>
+    <span>班级</span>
+  </a>
+  <a class="nav-item" href="stats.html">
+    <span class="nav-icon">📊</span>
+    <span>统计</span>
+  </a>
+</nav>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Supabase CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/class.js"></script>
+</body>
+</html>

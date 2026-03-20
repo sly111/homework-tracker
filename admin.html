@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>管理员登录 - 作业打卡记录</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="login-page">
+
+  <!-- 登录表单 -->
+  <div class="login-card" id="login-section">
+    <div class="login-logo">
+      <span class="logo-icon">📚</span>
+      <div class="logo-title">作业打卡记录</div>
+      <div class="logo-sub">管理员登录</div>
+    </div>
+
+    <form id="login-form" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label class="form-label" for="email">邮箱</label>
+        <input
+          type="email"
+          id="email"
+          class="form-input"
+          placeholder="请输入管理员邮箱"
+          autocomplete="email"
+          required
+        >
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">密码</label>
+        <input
+          type="password"
+          id="password"
+          class="form-input"
+          placeholder="请输入密码"
+          autocomplete="current-password"
+          required
+        >
+      </div>
+      <button type="submit" class="btn-login" id="btn-login">登录</button>
+      <div class="login-error" id="login-error"></div>
+    </form>
+
+    <a href="index.html" class="login-back">← 返回首页</a>
+  </div>
+
+  <!-- 管理面板（登录后显示） -->
+  <div id="manage-section" style="display:none; width:100%; max-width:480px; padding:16px;">
+
+    <!-- 顶部操作栏 -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+      <div style="font-size:18px; font-weight:700;">管理面板</div>
+      <div style="display:flex; gap:8px;">
+        <a href="index.html" style="font-size:13px; color:var(--primary); text-decoration:none; padding:6px 12px; border:1px solid var(--primary); border-radius:20px;">返回首页</a>
+        <button onclick="handleLogout()" style="font-size:13px; color:#f44336; background:none; border:1px solid #f44336; border-radius:20px; padding:6px 12px; cursor:pointer;">退出登录</button>
+      </div>
+    </div>
+
+    <!-- 科目管理 -->
+    <div style="background:#fff; border-radius:16px; padding:16px; margin-bottom:16px; box-shadow:0 1px 6px rgba(0,0,0,0.08);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="font-size:15px; font-weight:600;">📖 科目管理</div>
+        <button id="btn-batch-delete-subjects" onclick="batchDeleteSubjects()" style="display:none; font-size:12px; color:#f44336; background:none; border:1px solid #f44336; border-radius:12px; padding:3px 10px; cursor:pointer;">批量删除</button>
+      </div>
+      <div id="subject-list" style="margin-bottom:12px;">
+        <div style="color:#999; font-size:13px;">加载中...</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="new-subject-name" class="form-input" placeholder="科目名称（如：体育）" style="flex:1; height:36px; font-size:13px;">
+        <input type="text" id="new-subject-icon" class="form-input" placeholder="图标" style="width:60px; height:36px; font-size:13px; text-align:center;">
+        <button onclick="addSubject()" class="btn-primary" style="height:36px; padding:0 14px; font-size:13px; white-space:nowrap;">新增</button>
+      </div>
+    </div>
+
+    <!-- 班级管理 -->
+    <div style="background:#fff; border-radius:16px; padding:16px; box-shadow:0 1px 6px rgba(0,0,0,0.08);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="font-size:15px; font-weight:600;">🏫 班级管理</div>
+        <button id="btn-batch-delete-classes" onclick="batchDeleteClasses()" style="display:none; font-size:12px; color:#f44336; background:none; border:1px solid #f44336; border-radius:12px; padding:3px 10px; cursor:pointer;">批量删除</button>
+      </div>
+      <div id="class-list" style="margin-bottom:12px;">
+        <div style="color:#999; font-size:13px;">加载中...</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="new-class-name" class="form-input" placeholder="班级名称（如：10班）" style="flex:1; height:36px; font-size:13px;">
+        <input type="number" id="new-class-count" class="form-input" placeholder="人数" style="width:70px; height:36px; font-size:13px; text-align:center;" min="1" max="60">
+        <button onclick="addClass()" class="btn-primary" style="height:36px; padding:0 14px; font-size:13px; white-space:nowrap;">新增</button>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- SheetJS CDN（Excel 解析） -->
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<!-- Supabase CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

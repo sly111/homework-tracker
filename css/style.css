@@ -1,0 +1,987 @@
+/* ============================================================
+   作业打卡记录系统 - 移动端优先样式
+   ============================================================ */
+
+/* 基础重置 */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --primary: #e91e8c;
+  --primary-light: #fce4f3;
+  --primary-dark: #c2185b;
+  --bg: #f8f8f8;
+  --card-bg: #ffffff;
+  --text: #333333;
+  --text-secondary: #888888;
+  --border: #e8e8e8;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --nav-height: 56px;
+  --header-height: 56px;
+}
+
+html {
+  font-size: 14px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB',
+               'Microsoft YaHei', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom));
+}
+
+/* ============================================================
+   顶部导航栏
+   ============================================================ */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--card-bg);
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.app-header .title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.app-header .header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  padding: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.btn-icon:active {
+  background: var(--border);
+}
+
+/* ============================================================
+   底部导航
+   ============================================================ */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--card-bg);
+  height: var(--nav-height);
+  display: flex;
+  border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-size: 10px;
+  transition: color 0.2s;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+.nav-item .nav-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.nav-item.active {
+  color: var(--primary);
+}
+
+/* ============================================================
+   主内容区
+   ============================================================ */
+.main-content {
+  padding: 12px 12px 0;
+}
+
+/* ============================================================
+   卡片
+   ============================================================ */
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+/* ============================================================
+   日期选择器
+   ============================================================ */
+.date-bar {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.date-display {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.date-display::after {
+  content: '▾';
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.date-input-hidden {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* ============================================================
+   班级卡片列表（主页）
+   ============================================================ */
+.class-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.class-card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.class-card:active {
+  transform: scale(0.97);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+}
+
+.class-card .class-name {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.class-card .class-count {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.progress-bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #4caf50;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.progress-text {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+/* ============================================================
+   班级标签（班级详情页顶部）
+   ============================================================ */
+.class-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 12px 12px 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.class-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.class-tab {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 2px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.class-tab.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* ============================================================
+   作业状态表格（班级详情页核心）
+   ============================================================ */
+.homework-table-wrapper {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin: 12px;
+  overflow: hidden;
+}
+
+.homework-table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.homework-table-header .class-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.homework-name-area {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.homework-name-input {
+  font-size: 13px;
+  color: var(--text-secondary);
+  border: none;
+  background: transparent;
+  text-align: right;
+  width: 60px;
+  outline: none;
+  cursor: default;
+}
+
+.homework-name-input.editable {
+  cursor: text;
+  border-bottom: 1px dashed var(--border);
+}
+
+.btn-edit-name {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 2px;
+}
+
+/* 作业切换标签 */
+.homework-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.homework-tabs::-webkit-scrollbar { display: none; }
+
+.hw-tab {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.hw-tab.active {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.hw-tab-add {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 14px;
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+/* 表格主体 */
+.student-grid {
+  display: grid;
+  padding: 10px 8px;
+  gap: 4px;
+}
+
+.student-row {
+  display: grid;
+  gap: 4px;
+}
+
+.student-cell {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.student-num {
+  font-size: 12px;
+  color: var(--text-secondary);
+  width: 22px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.status-btn {
+  flex: 1;
+  height: 40px;
+  border-radius: 20px;
+  border: 1.5px dashed #ccc;
+  background: #f8f8f8;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  min-width: 0;
+}
+
+.status-btn:active {
+  transform: scale(0.93);
+}
+
+.status-btn.readonly {
+  cursor: default;
+}
+
+.status-btn.readonly:active {
+  transform: none;
+}
+
+/* 状态颜色（动态通过 JS 设置 style） */
+
+/* ============================================================
+   完成率摘要条
+   ============================================================ */
+.summary-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.summary-bar .rate {
+  font-size: 15px;
+  font-weight: 700;
+  color: #4caf50;
+}
+
+.summary-bar .detail {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.summary-bar .detail span {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* ============================================================
+   统计页
+   ============================================================ */
+.stats-filter {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  width: 50px;
+}
+
+.filter-input {
+  flex: 1;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+}
+
+.filter-input:focus {
+  border-color: var(--primary);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-primary:active {
+  background: var(--primary-dark);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: var(--card-bg);
+  color: var(--primary);
+  border: 1.5px solid var(--primary);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-secondary:active {
+  background: var(--primary-light);
+}
+
+.btn-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* 统计表格 */
+.stats-table-wrapper {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.stats-table th {
+  background: var(--bg);
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.stats-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.stats-table tr:last-child td {
+  border-bottom: none;
+}
+
+.stats-table tr:nth-child(even) {
+  background: #fafafa;
+}
+
+/* 横向进度条（统计页） */
+.bar-chart-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.bar-chart-row:last-child {
+  border-bottom: none;
+}
+
+.bar-label {
+  width: 40px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.bar-track {
+  flex: 1;
+  height: 20px;
+  background: var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: #4caf50;
+  border-radius: 10px;
+  transition: width 0.5s ease;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 6px;
+}
+
+.bar-fill-text {
+  font-size: 10px;
+  color: #fff;
+  font-weight: 600;
+}
+
+.bar-value {
+  width: 36px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   管理员登录页
+   ============================================================ */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(135deg, #fce4f3 0%, #f8f8f8 100%);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--card-bg);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(233,30,140,0.12);
+  padding: 32px 24px;
+}
+
+.login-logo {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.login-logo .logo-icon {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.login-logo .logo-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.login-logo .logo-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.form-input {
+  width: 100%;
+  height: 44px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 14px;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus {
+  border-color: var(--primary);
+  background: #fff;
+}
+
+.btn-login {
+  width: 100%;
+  height: 48px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-login:active {
+  background: var(--primary-dark);
+}
+
+.btn-login:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.login-error {
+  color: #f44336;
+  font-size: 13px;
+  text-align: center;
+  margin-top: 10px;
+  min-height: 18px;
+}
+
+.login-back {
+  display: block;
+  text-align: center;
+  margin-top: 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+/* ============================================================
+   设置页
+   ============================================================ */
+.settings-section {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.settings-section-title {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 12px 16px 6px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.settings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.settings-item:last-child {
+  border-bottom: none;
+}
+
+.settings-item-label {
+  font-size: 15px;
+  color: var(--text);
+}
+
+.settings-item-value {
+  font-size: 14px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.settings-item-value::after {
+  content: '›';
+  font-size: 18px;
+}
+
+.settings-input-inline {
+  width: 60px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+}
+
+.settings-input-inline:focus {
+  border-color: var(--primary);
+}
+
+/* ============================================================
+   Toast 提示
+   ============================================================ */
+.toast {
+  position: fixed;
+  bottom: calc(var(--nav-height) + 16px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(0,0,0,0.75);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: all 0.3s;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ============================================================
+   配置错误提示
+   ============================================================ */
+#config-error {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+#config-error.show {
+  display: flex;
+}
+
+.config-error-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 320px;
+  text-align: center;
+}
+
+.config-error-card h3 {
+  color: #f44336;
+  margin-bottom: 12px;
+  font-size: 16px;
+}
+
+.config-error-card p {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.6;
+}
+
+/* ============================================================
+   加载状态
+   ============================================================ */
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  gap: 10px;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   管理员状态标识
+   ============================================================ */
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 10px;
+}
+
+/* ============================================================
+   空状态
+   ============================================================ */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-secondary);
+}
+
+.empty-state .empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.empty-state p {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ============================================================
+   响应式（平板/桌面）
+   ============================================================ */
+@media (min-width: 600px) {
+  .class-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .main-content {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 16px 16px 0;
+  }
+
+  .homework-table-wrapper {
+    margin: 12px 16px;
+  }
+
+  .class-tabs {
+    padding: 12px 16px 0;
+  }
+}
+
+@media (min-width: 900px) {
+  .class-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}

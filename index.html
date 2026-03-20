@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>作业打卡记录</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- 配置错误提示 -->
+<div id="config-error">
+  <div class="config-error-card">
+    <h3>⚠️ 配置未完成</h3>
+    <p>请先编辑 <code>js/config.js</code>，填入您的 Supabase URL 和 Key，然后刷新页面。</p>
+    <br>
+    <p>详细步骤请参考 <code>README.md</code></p>
+  </div>
+</div>
+
+<!-- 顶部导航 -->
+<header class="app-header">
+  <span class="title" id="app-title">作业打卡记录</span>
+  <div class="header-right">
+    <span id="admin-badge" class="admin-badge" style="display:none">✓ 管理员</span>
+    <button class="btn-icon" id="btn-filter" title="筛选班级" onclick="toggleFilterPanel()">🔍</button>
+    <div style="position:relative;">
+      <button class="btn-icon" id="btn-admin-toggle" onclick="toggleAdminMenu()">👤</button>
+      <div id="admin-menu" onclick="event.stopPropagation()" style="display:none; position:absolute; top:40px; right:0; background:#fff; border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,0.15); min-width:140px; z-index:301; overflow:hidden;"></div>
+    </div>
+  </div>
+</header>
+<!-- 筛选面板 overlay -->
+<div id="filter-overlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; z-index:199;" onclick="toggleFilterPanel()"></div>
+
+<!-- 班级/科目筛选面板（弹出式） -->
+<div id="filter-panel" style="display:none; position:fixed; top:56px; left:0; right:0; background:#fff; border-bottom:1px solid var(--border); padding:10px 16px; z-index:200; box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+  <div style="font-size:13px; font-weight:600; color:var(--text); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+    <span>班级筛选</span>
+    <div style="display:flex; gap:8px;">
+      <button onclick="selectAllClasses()" style="font-size:12px; color:var(--primary); background:none; border:none; cursor:pointer;">全选</button>
+      <button onclick="clearAllClasses()" style="font-size:12px; color:var(--text-secondary); background:none; border:none; cursor:pointer;">清空</button>
+    </div>
+  </div>
+  <div id="filter-checkboxes" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;"></div>
+
+  <!-- 科目筛选区域 -->
+  <div style="font-size:13px; font-weight:600; color:var(--text); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+    <span>科目筛选</span>
+    <div style="display:flex; gap:8px;">
+      <button onclick="selectAllSubjects()" style="font-size:12px; color:var(--primary); background:none; border:none; cursor:pointer;">全选</button>
+      <button onclick="clearAllSubjects()" style="font-size:12px; color:var(--text-secondary); background:none; border:none; cursor:pointer;">清空</button>
+    </div>
+  </div>
+  <div id="filter-subject-checkboxes" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+</div>
+
+<!-- 主内容 -->
+<main class="main-content">
+
+  <!-- 日期选择 -->
+  <div class="date-bar">
+    <!-- 第一行：开始日期 ~ 结束日期 + 左右箭头 -->
+    <div style="display:flex; align-items:center; gap:6px; justify-content:center; flex-wrap:wrap;">
+      <button class="btn-icon" onclick="prevDate()" title="开始日期前移一天" style="font-size:18px; padding:4px 8px;">◀</button>
+      <div style="display:flex; align-items:center; gap:4px; cursor:pointer;" onclick="openStartDatePicker()">
+        <span id="start-date-text" style="font-size:14px; font-weight:600; color:var(--primary);"></span>
+      </div>
+      <span style="color:var(--text-secondary);">~</span>
+      <div style="display:flex; align-items:center; gap:4px; cursor:pointer;" onclick="openEndDatePicker()">
+        <span id="end-date-text" style="font-size:14px; font-weight:600; color:var(--primary);"></span>
+      </div>
+      <button class="btn-icon" onclick="nextDate()" title="结束日期后移一天" style="font-size:18px; padding:4px 8px;">▶</button>
+    </div>
+    <!-- 第二行：快捷按钮 -->
+    <div style="display:flex; align-items:center; gap:6px; justify-content:center; margin-top:6px;">
+      <button onclick="goYesterday()" style="font-size:12px; padding:3px 10px; border-radius:12px; border:1px solid var(--border); background:#fff; color:var(--text-secondary); cursor:pointer;">◀ 前一天</button>
+      <button onclick="goToday()" style="font-size:12px; padding:3px 10px; border-radius:12px; border:1px solid var(--primary); background:var(--primary-light); color:var(--primary); cursor:pointer; font-weight:600;">今天</button>
+      <button onclick="goTomorrow()" style="font-size:12px; padding:3px 10px; border-radius:12px; border:1px solid var(--border); background:#fff; color:var(--text-secondary); cursor:pointer;">后一天 ▶</button>
+    </div>
+    <input type="date" id="start-date-picker" class="date-input-hidden" onchange="onStartDateChange(this.value)">
+    <input type="date" id="end-date-picker" class="date-input-hidden" onchange="onEndDateChange(this.value)">
+    <div style="font-size:12px; color:var(--text-secondary); text-align:center; margin-top:4px;">
+      <span id="total-summary">--</span>
+    </div>
+  </div>
+
+  <!-- 科目筛选标签 -->
+  <div style="display:flex; gap:8px; overflow-x:auto; padding:0 0 8px; scrollbar-width:none; -webkit-overflow-scrolling:touch;" id="subject-tabs">
+    <!-- 动态生成 -->
+  </div>
+
+  <!-- 班级卡片列表 -->
+  <div class="class-grid" id="class-grid">
+    <div class="loading-spinner">
+      <div class="spinner"></div>
+      <span>加载中...</span>
+    </div>
+  </div>
+
+</main>
+
+<!-- 底部导航 -->
+<nav class="bottom-nav">
+  <a class="nav-item active" href="index.html">
+    <span class="nav-icon">🏠</span>
+    <span>首页</span>
+  </a>
+  <a class="nav-item" href="class.html">
+    <span class="nav-icon">📋</span>
+    <span>班级</span>
+  </a>
+  <a class="nav-item" href="stats.html">
+    <span class="nav-icon">📊</span>
+    <span>统计</span>
+  </a>
+</nav>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Supabase CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

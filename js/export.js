@@ -249,31 +249,53 @@ async function exportClassDetailToExcel(classId, startDate, endDate, subject) {
 
     const wb = XLSX.utils.book_new();
 
-    // Sheet 1：学生×日期×科目 矩阵
-    // 表头：学生 | 日期1-科目1 | 日期1-科目2 | ...
-    const colHeaders = [];
+    // Sheet 1：学生明细（矩阵格式：学生 × 日期×作业）
+    // 收集所有日期+作业组合（按实际 homework_name）
+    const dateHomeworkList = [];
     dates.forEach(function(d) {
-      subjects.forEach(function(sub) {
-        colHeaders.push(d.slice(5) + ' ' + sub);
+      // 获取该日期下的所有作业名
+      const hwNamesForDate = [];
+      records.forEach(function(r) {
+        if (r.date === d && r.homework_name && hwNamesForDate.indexOf(r.homework_name) === -1) {
+          hwNamesForDate.push(r.homework_name);
+        }
+      });
+      // 按作业名排序
+      hwNamesForDate.sort();
+      // 添加到列表
+      hwNamesForDate.forEach(function(hwName) {
+        dateHomeworkList.push({ date: d, hwName: hwName });
       });
     });
+
+    // 表头：学生 | 日期-作业1 | 日期-作业2 | ...
+    const colHeaders = dateHomeworkList.map(function(dh) {
+      // 简化日期显示（去掉年份）
+      const dateShort = dh.date.slice(5); // "03-18"
+      // 作业名可能包含科目，如"语文-默写"，保留完整名称
+      return dateShort + ' ' + dh.hwName;
+    });
+    
     const headerRow = ['学号', '姓名'].concat(colHeaders);
     const dataRows = [headerRow];
 
     students.forEach(function(student) {
       const row = [student.student_number, student.name || ''];
-      dates.forEach(function(d) {
-        subjects.forEach(function(sub) {
-          const status = (recordIndex[student.id] && recordIndex[student.id][d] && recordIndex[student.id][d][sub]) || '未交';
-          row.push(status);
-        });
+      dateHomeworkList.forEach(function(dh) {
+        const status = (recordIndex[student.id] && recordIndex[student.id][dh.date] && recordIndex[student.id][dh.date][dh.hwName]) || '未交';
+        // 用简洁符号表示状态
+        let statusSymbol = status;
+        if (status === '已交') statusSymbol = '✓';
+        else if (status === '优秀') statusSymbol = '★';
+        else if (status === '未交') statusSymbol = '✗';
+        row.push(statusSymbol);
       });
       dataRows.push(row);
     });
 
     const ws1 = XLSX.utils.aoa_to_sheet(dataRows);
     const colWidths = [{ wch: 6 }, { wch: 12 }];
-    colHeaders.forEach(function() { colWidths.push({ wch: 10 }); });
+    colHeaders.forEach(function() { colWidths.push({ wch: 14 }); });
     ws1['!cols'] = colWidths;
     XLSX.utils.book_append_sheet(wb, ws1, '学生明细');
 
@@ -298,46 +320,6 @@ async function exportClassDetailToExcel(classId, startDate, endDate, subject) {
     });
     const ws2 = XLSX.utils.aoa_to_sheet(summaryRows);
     XLSX.utils.book_append_sheet(wb, ws2, '完成率汇总');
-
-    // Sheet 3：详细作业记录列表（每行一条记录）
-    const detailRows = [['日期', '作业名称', '学号', '姓名', '状态']];
-    
-    // 按日期、作业名、学号排序
-    const sortedRecords = records.slice().sort(function(a, b) {
-      if (a.date !== b.date) return a.date.localeCompare(b.date);
-      if (a.homework_name !== b.homework_name) return a.homework_name.localeCompare(b.homework_name);
-      const aNum = (a.students && a.students.student_number) || 0;
-      const bNum = (b.students && b.students.student_number) || 0;
-      return aNum - bNum;
-    });
-    
-    sortedRecords.forEach(function(r) {
-      detailRows.push([
-        r.date,
-        r.homework_name,
-        (r.students && r.students.student_number) || '--',
-        (r.students && r.students.name) || '',
-        r.status,
-      ]);
-    });
-    
-    // 添加汇总统计行
-    detailRows.push([]);
-    detailRows.push(['统计汇总', '', '', '', '']);
-    const statusCount = { '已交': 0, '优秀': 0, '未交': 0 };
-    sortedRecords.forEach(function(r) {
-      if (statusCount[r.status] !== undefined) {
-        statusCount[r.status]++;
-      }
-    });
-    detailRows.push(['已交', statusCount['已交'], '', '', '']);
-    detailRows.push(['优秀', statusCount['优秀'], '', '', '']);
-    detailRows.push(['未交', statusCount['未交'], '', '', '']);
-    detailRows.push(['总计', sortedRecords.length, '', '', '']);
-    
-    const ws3 = XLSX.utils.aoa_to_sheet(detailRows);
-    ws3['!cols'] = [{ wch: 12 }, { wch: 16 }, { wch: 6 }, { wch: 10 }, { wch: 8 }];
-    XLSX.utils.book_append_sheet(wb, ws3, '作业明细列表');
 
     const cls = await fetchClasses().then(function(list) { return list.find(function(c) { return c.id === classId; }); });
     const clsName = cls ? cls.name : ('班级' + classId);

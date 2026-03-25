@@ -687,13 +687,50 @@ function exportStudentList() {
 }
 
 // ============================================================
-// 状态说明折叠
+// 状态说明折叠 & 动态渲染
 // ============================================================
 let legendVisible = true;
 function toggleLegend() {
   legendVisible = !legendVisible;
   document.getElementById('legend-content').style.display = legendVisible ? 'flex' : 'none';
   document.getElementById('legend-arrow').textContent = legendVisible ? '▾' : '▸';
+}
+
+// 动态渲染状态说明
+function renderStatusLegend() {
+  var container = document.getElementById('legend-content');
+  if (!container) return;
+  
+  var html = CONFIG.statuses.map(function(s) {
+    var iconDisplay = s.icon || '—';
+    var borderStyle = s.name === '未交' ? 'border:1.5px dashed #ccc;' : '';
+    return '<div style="display:flex; align-items:center; gap:5px;">' +
+      '<span style="width:26px; height:26px; border-radius:13px; background:' + s.bgColor + '; color:' + s.textColor + '; ' + borderStyle + ' display:inline-flex; align-items:center; justify-content:center; font-size:12px;">' + iconDisplay + '</span>' +
+      '<span style="font-size:12px; color:var(--text-secondary);">' + s.name + '</span>' +
+      '</div>';
+  }).join('');
+  
+  html += '<div style="font-size:11px; color:var(--text-secondary); align-self:center;">点击按钮循环切换（管理员）</div>';
+  container.innerHTML = html;
+}
+
+// 动态渲染状态筛选按钮
+function renderStatusFilterButtons() {
+  var container = document.getElementById('status-filter-bar');
+  if (!container) return;
+  
+  // 保留导出按钮的HTML，先渲染筛选按钮
+  var html = '<button class="status-filter-btn" data-filter="" onclick="filterStudentsByStatus(\'\')" style="padding:4px 12px; font-size:11px; border:none; border-radius:14px; cursor:pointer; background:var(--primary); color:#fff;">全部</button>';
+  
+  CONFIG.statuses.forEach(function(s) {
+    var icon = s.icon || (s.name === '未交' ? '✗' : '');
+    html += '<button class="status-filter-btn" data-filter="' + s.name + '" onclick="filterStudentsByStatus(\'' + s.name + '\')" style="padding:4px 12px; font-size:11px; border:none; border-radius:14px; cursor:pointer; background:var(--bg); color:var(--text-secondary);">' + icon + ' ' + s.name + '</button>';
+  });
+  
+  html += '<div style="flex:1;"></div>' +
+    '<button onclick="exportStudentList()" style="padding:4px 12px; font-size:11px; border:1px solid var(--primary); border-radius:14px; cursor:pointer; background:#fff; color:var(--primary);">📋 导出名单</button>';
+  
+  container.innerHTML = html;
 }
 
 // ============================================================
@@ -914,6 +951,11 @@ async function init() {
     }
   } catch(e) { console.error('加载科目失败', e); }
 
+  // 初始化默认状态（如果数据库为空）
+  try {
+    await initDefaultStatuses();
+  } catch(e) { console.error('初始化默认状态失败', e); }
+
   // 从数据库动态加载状态列表，覆盖 config.js 中的静态配置
   try {
     var dbStatuses = await fetchStatuses();
@@ -929,6 +971,10 @@ async function init() {
       });
     }
   } catch(e) { console.error('加载状态失败', e); }
+
+  // 渲染状态说明和筛选按钮
+  renderStatusLegend();
+  renderStatusFilterButtons();
 
   // 强制登录检查：未登录跳转到登录页
   try {

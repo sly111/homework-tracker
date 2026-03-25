@@ -561,3 +561,36 @@ async function deleteManyStatuses(ids) {
   const { error } = await sb.from('statuses').delete().in('id', ids);
   if (error) throw error;
 }
+
+// ============================================================
+// 初始化默认状态（如果数据库为空）
+// ============================================================
+
+async function initDefaultStatuses() {
+  const sb = getSupabase();
+  try {
+    // 检查是否已有状态
+    const { data: existing, error } = await sb.from('statuses').select('id').limit(1);
+    if (error) throw error;
+    
+    // 如果已经有数据，不插入
+    if (existing && existing.length > 0) {
+      console.log('状态表已有数据，跳过初始化');
+      return;
+    }
+    
+    // 插入默认的3个状态
+    const defaultStatuses = [
+      { name: '未交', icon: '', color: '#666666', text_color: '#666666', bg_color: '#f0f0f0', display_order: 1 },
+      { name: '已交', icon: '✓', color: '#ffffff', text_color: '#ffffff', bg_color: '#4caf50', display_order: 2 },
+      { name: '优秀', icon: '★', color: '#ffffff', text_color: '#ffffff', bg_color: '#e91e8c', display_order: 3 },
+    ];
+    
+    const { error: insertError } = await sb.from('statuses').insert(defaultStatuses);
+    if (insertError) throw insertError;
+    
+    console.log('默认状态初始化完成');
+  } catch(e) {
+    console.error('初始化默认状态失败:', e);
+  }
+}

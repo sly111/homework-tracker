@@ -985,6 +985,11 @@ async function init() {
     }
   } catch(e) { console.error('加载科目失败', e); }
 
+  // 初始化默认状态（如果数据库为空）
+  try {
+    await initDefaultStatuses();
+  } catch(e) { console.error('初始化默认状态失败', e); }
+
   // 从数据库动态加载状态列表，覆盖 config.js 中的静态配置
   try {
     var dbStatuses = await fetchStatuses();

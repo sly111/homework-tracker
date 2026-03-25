@@ -386,16 +386,31 @@ async function renameHomework(oldName) {
   }
 }
 
-// 循环切换状态
+// 循环切换状态（支持快速指定模式）
 async function cycleStatus(btn, studentId) {
   if (!adminUser) return;
   if (!currentHomeworkName) { showToast('请先选择作业'); return; }
 
   const currentStatus = btn.dataset.status;
   const statuses = CONFIG.statuses;
-  const currentIdx = statuses.findIndex(function(s) { return s.name === currentStatus; });
-  const nextIdx = (currentIdx + 1) % statuses.length;
-  const nextStatus = statuses[nextIdx];
+  
+  var nextStatus;
+  
+  // 检查是否启用了快速指定模式
+  if (quickAssignMode && quickAssignTargetStatus) {
+    // 快速指定模式：直接设置为目标状态
+    nextStatus = statuses.find(function(s) { return s.name === quickAssignTargetStatus; });
+    if (!nextStatus) {
+      showToast('目标状态无效');
+      return;
+    }
+  } else {
+    // 循环切换模式：切换到下一个状态
+    const currentIdx = statuses.findIndex(function(s) { return s.name === currentStatus; });
+    const nextIdx = (currentIdx + 1) % statuses.length;
+    nextStatus = statuses[nextIdx];
+  }
+  
   const nextIcon = nextStatus.name === '未交' ? '—' : nextStatus.icon;
 
   // 乐观更新 UI
@@ -734,6 +749,87 @@ function renderStatusFilterButtons() {
 }
 
 // ============================================================
+// 快速指定模式
+// ============================================================
+let quickAssignMode = false;  // 是否启用快速指定模式
+let quickAssignTargetStatus = null;  // 当前选中的目标状态
+
+// 显示快速指定面板（管理员登录后调用）
+function showQuickAssignPanel() {
+  var panel = document.getElementById('quick-assign-panel');
+  if (panel && adminUser) {
+    panel.style.display = '';
+    renderQuickAssignButtons();
+  }
+}
+
+// 切换快速指定模式
+function toggleQuickAssignMode() {
+  var checkbox = document.getElementById('quick-assign-toggle');
+  var statusContainer = document.getElementById('quick-assign-statuses');
+  
+  quickAssignMode = checkbox.checked;
+  
+  if (quickAssignMode) {
+    statusContainer.style.display = '';
+    // 默认选中第一个状态（未交）
+    if (!quickAssignTargetStatus && CONFIG.statuses.length > 0) {
+      selectQuickAssignStatus(CONFIG.statuses[0].name);
+    }
+    showToast('快速指定模式已开启，点击下方状态选中后，点击学生直接设置');
+  } else {
+    statusContainer.style.display = 'none';
+    quickAssignTargetStatus = null;
+    showToast('已切换回循环切换模式');
+  }
+}
+
+// 渲染快速指定状态按钮
+function renderQuickAssignButtons() {
+  var container = document.getElementById('quick-assign-buttons');
+  if (!container) return;
+  
+  var html = CONFIG.statuses.map(function(s) {
+    var icon = s.icon || (s.name === '未交' ? '—' : '');
+    var isSelected = quickAssignTargetStatus === s.name;
+    var borderColor = isSelected ? 'var(--primary)' : 'transparent';
+    var shadow = isSelected ? 'box-shadow:0 0 0 2px var(--primary);' : '';
+    return '<button class="quick-assign-btn" data-status="' + s.name + '" onclick="selectQuickAssignStatus(\'' + s.name + '\')" ' +
+      'style="display:flex; align-items:center; gap:4px; padding:6px 12px; font-size:12px; border:2px solid ' + borderColor + '; border-radius:16px; cursor:pointer; background:' + s.bgColor + '; color:' + s.textColor + '; ' + shadow + '">' +
+      '<span>' + icon + '</span>' +
+      '<span>' + s.name + '</span>' +
+      '</button>';
+  }).join('');
+  
+  container.innerHTML = html;
+}
+
+// 选中快速指定的目标状态
+function selectQuickAssignStatus(statusName) {
+  quickAssignTargetStatus = statusName;
+  
+  // 更新按钮样式
+  var buttons = document.querySelectorAll('.quick-assign-btn');
+  buttons.forEach(function(btn) {
+    var btnStatus = btn.getAttribute('data-status');
+    var s = CONFIG.statuses.find(function(st) { return st.name === btnStatus; });
+    if (!s) return;
+    
+    if (btnStatus === statusName) {
+      // 选中状态
+      btn.style.borderColor = 'var(--primary)';
+      btn.style.boxShadow = '0 0 0 2px var(--primary)';
+    } else {
+      // 未选中
+      btn.style.borderColor = 'transparent';
+      btn.style.boxShadow = 'none';
+    }
+  });
+  
+  showToast('已选中：' + statusName + '，点击学生即可设置');
+}
+
+// ============================================================
 // 班级/科目筛选面板
 // ============================================================
 var visibleClassIdsLocal = null;  // 从 localStorage 读取
@@ -938,6 +1034,11 @@ function doLogin() {
 function updateAdminUI() {
   var badge = document.getElementById('admin-badge');
   badge.style.display = adminUser ? 'inline-flex' : 'none';
+  
+  // 管理员登录后显示快速指定面板
+  if (adminUser) {
+    showQuickAssignPanel();
+  }
 }
 
 async function init() {
@@ -984,6 +1085,7 @@ async function init() {
       return;
     }
     adminUser = user;
+    updateAdminUI();  // 更新UI，包括显示快速指定面板
   } catch(e) {
     window.location.href = 'admin.html?from=class';
     return;

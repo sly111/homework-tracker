@@ -107,7 +107,7 @@
           <thead>
             <tr>
               <th>班级</th>
-              <th>已交</th>
+              <th>已提交</th>
               <th>优秀</th>
               <th>未交</th>
               <th>总人次</th>
@@ -158,12 +158,9 @@
 
     <!-- 班级明细表格：行=学生，列=日期×科目 -->
     <div id="cd-table-wrapper" style="display:none">
-      <!-- 状态筛选按钮组 -->
-      <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
-        <button class="cd-filter-btn" data-status="" onclick="filterClassDetail('')" style="padding:6px 14px; font-size:12px; border:none; border-radius:16px; cursor:pointer; background:var(--primary); color:#fff;">全部</button>
-        <button class="cd-filter-btn" data-status="未交" onclick="filterClassDetail('未交')" style="padding:6px 14px; font-size:12px; border:none; border-radius:16px; cursor:pointer; background:var(--bg); color:var(--text-secondary);">✗ 未交</button>
-        <button class="cd-filter-btn" data-status="已交" onclick="filterClassDetail('已交')" style="padding:6px 14px; font-size:12px; border:none; border-radius:16px; cursor:pointer; background:var(--bg); color:var(--text-secondary);">✓ 已交</button>
-        <button class="cd-filter-btn" data-status="优秀" onclick="filterClassDetail('优秀')" style="padding:6px 14px; font-size:12px; border:none; border-radius:16px; cursor:pointer; background:var(--bg); color:var(--text-secondary);">★ 优秀</button>
+      <!-- 状态筛选按钮组（动态生成） -->
+      <div id="cd-filter-buttons" style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+        <!-- 动态生成筛选按钮 -->
       </div>
       <div style="overflow-x:auto;">
         <table class="stats-table" id="cd-table" style="min-width:400px;">

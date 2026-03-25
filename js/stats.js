@@ -166,8 +166,14 @@ async function loadSummaryStats() {
       const stat = classStatsMap[classId];
       stat.total++;
       stat.homeworkNames.add(r.homework_name);
-      if (r.status === '已交') stat.submitted++;
-      else if (r.status === '优秀') { stat.submitted++; stat.excellent++; }
+      // 统计提交情况：除"未交"外都视为已提交
+      if (r.status === '未交') {
+        // 未交不增加 submitted
+      } else {
+        stat.submitted++;
+        // 优秀单独统计
+        if (r.status === '优秀') stat.excellent++;
+      }
       // 注意：未交人次不在这里累加，而是用 期望总数 - 已交 计算
     });
 
@@ -264,8 +270,13 @@ async function loadSummaryStats() {
         var stat = classSubjectStats[classId][subName];
         stat.total++;
         stat.hwNames.add(r.homework_name);
-        if (r.status === '已交') stat.submitted++;
-        else if (r.status === '优秀') { stat.submitted++; stat.excellent++; }
+        // 统计提交情况：除"未交"外都视为已提交
+        if (r.status === '未交') {
+          // 未交不增加 submitted
+        } else {
+          stat.submitted++;
+          if (r.status === '优秀') stat.excellent++;
+        }
       });
 
       var rows = [];
@@ -293,6 +304,7 @@ async function loadSummaryStats() {
             var rate = expectedTotal > 0 ? Math.round(s.submitted / expectedTotal * 100) : 0;
             var color = rate >= 90 ? '#4caf50' : rate >= 70 ? '#ff9800' : '#f44336';
             // 跨日期时显示日均值
+            // 已提交（不含优秀）= submitted - excellent
             var dSubmitted = dayCount > 1 ? Math.round((s.submitted - s.excellent) / dayCount) : (s.submitted - s.excellent);
             var dExcellent = dayCount > 1 ? Math.round(s.excellent / dayCount) : s.excellent;
             var dPending = dayCount > 1 ? Math.round(pendingCount / dayCount) : pendingCount;
@@ -314,6 +326,7 @@ async function loadSummaryStats() {
         var expectedTotal = s.studentCount * hwCount;
         var pendingCount = Math.max(0, expectedTotal - s.submitted);
         // 跨日期时显示日均值
+        // 已提交（不含优秀）= submitted - excellent
         var dSubmitted = dayCount > 1 ? Math.round((s.submitted - s.excellent) / dayCount) : (s.submitted - s.excellent);
         var dExcellent = dayCount > 1 ? Math.round(s.excellent / dayCount) : s.excellent;
         var dPending = dayCount > 1 ? Math.round(pendingCount / dayCount) : pendingCount;
@@ -339,7 +352,25 @@ async function loadSummaryStats() {
 // ============================================================
 // Tab 2: 班级明细（行=学生，列=日期×科目）
 // ============================================================
+
+// 动态渲染班级明细页的状态筛选按钮
+function renderClassDetailFilterButtons() {
+  var container = document.getElementById('cd-filter-buttons');
+  if (!container) return;
+  
+  var html = '<button class="cd-filter-btn" data-status="" onclick="filterClassDetail(\'\')" style="padding:6px 14px; font-size:12px; border:none; border-radius:16px; cursor:pointer; background:var(--primary); color:#fff;">全部</button>';
+  
+  CONFIG.statuses.forEach(function(s) {
+    var icon = s.icon || (s.name === '未交' ? '✗' : '');
+    html += '<button class="cd-filter-btn" data-status="' + s.name + '" onclick="filterClassDetail(\'' + s.name + '\')" style="padding:6px 14px; font-size:12px; border:none; border-radius:16px; cursor:pointer; background:var(--bg); color:var(--text-secondary);">' + icon + ' ' + s.name + '</button>';
+  });
+  
+  container.innerHTML = html;
+}
+
 async function loadClassDetail() {
+  // 渲染筛选按钮（根据当前 CONFIG.statuses）
+  renderClassDetailFilterButtons();
   // 从多选复选框获取选中的科目
   var selectedSubjects = getSelectedCdSubjects();
   const classId = parseInt(document.getElementById('cd-class-select').value);
@@ -401,11 +432,18 @@ async function loadClassDetail() {
     // 辅助：根据科目色生成状态单元格（带科目色分组背景）
     function statusCell(status, subColor, isFirstInSubject) {
       var borderLeft = isFirstInSubject ? ('border-left:2px solid ' + (subColor || '#ddd') + ';') : '';
-      if (!status || status === '未交') {
-        return '<td data-status="未交" style="background:#ffebee; color:#f44336; text-align:center; font-size:13px;' + borderLeft + '">✗</td>';
+      var actualStatus = status || '未交';
+      const def = CONFIG.statuses.find(function(s) { return s.name === actualStatus; });
+      var bgColor = def ? def.bgColor : '#eee';
+      var textColor = def ? def.textColor : '#333';
+      var icon = def ? (def.icon || actualStatus) : actualStatus;
+      // 如果未找到配置且是未交，使用默认样式
+      if (!def && actualStatus === '未交') {
+        bgColor = '#ffebee';
+        textColor = '#f44336';
+        icon = '✗';
       }
-      const def = CONFIG.statuses.find(function(s) { return s.name === status; });
-      return '<td data-status="' + status + '" style="background:' + (def ? def.bgColor : '#eee') + '; color:' + (def ? def.textColor : '#333') + '; text-align:center; font-size:13px;' + borderLeft + '">' + (def ? def.icon : status) + '</td>';
+      return '<td data-status="' + actualStatus + '" style="background:' + bgColor + '; color:' + textColor + '; text-align:center; font-size:13px;' + borderLeft + '">' + icon + '</td>';
     }
 
     // 列头：日期×作业名（按完整 homework_name 显示）
@@ -552,18 +590,24 @@ async function loadPersonalStats() {
       return;
     }
 
-    // 各作业汇总
+    // 各作业汇总（支持动态状态）
     var hwSummary = {};
-    hwNames.forEach(function(hw) { hwSummary[hw] = { submitted: 0, excellent: 0, pending: 0, total: 0 }; });
+    hwNames.forEach(function(hw) { hwSummary[hw] = { submitted: 0, pending: 0, total: 0, statusCounts: {} }; });
     dates.forEach(function(d) {
       hwNames.forEach(function(hw) {
         var status = index[d] && index[d][hw];
         if (!status) return;
         var s = hwSummary[hw];
         s.total++;
-        if (status === '已交') s.submitted++;
-        else if (status === '优秀') { s.submitted++; s.excellent++; }
-        else if (status === '未交') s.pending++;
+        // 统计各状态数量
+        if (!s.statusCounts[status]) s.statusCounts[status] = 0;
+        s.statusCounts[status]++;
+        // 判断是否已提交（除"未交"外都视为已提交）
+        if (status === '未交') {
+          s.pending++;
+        } else {
+          s.submitted++;
+        }
       });
     });
 
@@ -584,7 +628,7 @@ async function loadPersonalStats() {
       return '<div style="text-align:center; padding:6px 10px; background:var(--bg); border-radius:8px;">' +
         '<div style="font-size:18px; font-weight:700; color:' + color + ';">' + rate + '%</div>' +
         '<div style="font-size:11px; color:var(--text-secondary);">' + (def ? def.icon : '') + ' ' + shortName + '</div>' +
-        '<div style="font-size:10px; color:var(--text-secondary);">未交' + s.pending + '次</div></div>';
+        '<div style="font-size:10px; color:var(--text-secondary);">提交' + s.submitted + '/' + s.total + '</div></div>';
     }).join('');
 
     // 预处理 hwNames：附带科目信息
@@ -613,8 +657,10 @@ async function loadPersonalStats() {
 
     var tbody = document.getElementById('p-tbody');
     tbody.innerHTML = dates.map(function(d) {
+      // 检查该行是否有"未交"状态（用于高亮显示）
       var hasPending = hwCols.some(function(col) {
-        return ((index[d] && index[d][col.hw]) ? index[d][col.hw] : '未交') === '未交';
+        var st = (index[d] && index[d][col.hw]) ? index[d][col.hw] : '未交';
+        return st === '未交';
       });
       var prevSubP2 = null;
       var cells = hwCols.map(function(col) {
@@ -626,11 +672,19 @@ async function loadPersonalStats() {
         if (status === '--') {
           return '<td style="text-align:center; color:#ccc; font-size:13px;' + borderStyle + '">--</td>';
         }
+        // 使用 CONFIG.statuses 中的配置渲染状态
         var def = CONFIG.statuses.find(function(s) { return s.name === status; });
-        var isPending = status === '未交';
-        return '<td style="text-align:center; background:' + (isPending ? '#ffebee' : (def ? def.bgColor : '#eee')) +
-          '; color:' + (isPending ? '#f44336' : (def ? def.textColor : '#333')) +
-          '; font-size:13px;' + borderStyle + '">' + (isPending ? '✗' : (def ? def.icon : status)) + '</td>';
+        var bgColor = def ? def.bgColor : '#eee';
+        var textColor = def ? def.textColor : '#333';
+        var icon = def ? (def.icon || status) : status;
+        // 如果未找到配置且是未交，使用默认样式
+        if (!def && status === '未交') {
+          bgColor = '#ffebee';
+          textColor = '#f44336';
+          icon = '✗';
+        }
+        return '<td style="text-align:center; background:' + bgColor + '; color:' + textColor +
+          '; font-size:13px;' + borderStyle + '">' + icon + '</td>';
       }).join('');
       return '<tr style="' + (hasPending ? 'background:#fff8f8;' : '') + '">' +
         '<td style="font-size:12px; white-space:nowrap; padding:4px 6px;">' + d.slice(5) + '</td>' + cells + '</tr>';

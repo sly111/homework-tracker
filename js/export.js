@@ -299,6 +299,46 @@ async function exportClassDetailToExcel(classId, startDate, endDate, subject) {
     const ws2 = XLSX.utils.aoa_to_sheet(summaryRows);
     XLSX.utils.book_append_sheet(wb, ws2, '完成率汇总');
 
+    // Sheet 3：详细作业记录列表（每行一条记录）
+    const detailRows = [['日期', '作业名称', '学号', '姓名', '状态']];
+    
+    // 按日期、作业名、学号排序
+    const sortedRecords = records.slice().sort(function(a, b) {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      if (a.homework_name !== b.homework_name) return a.homework_name.localeCompare(b.homework_name);
+      const aNum = (a.students && a.students.student_number) || 0;
+      const bNum = (b.students && b.students.student_number) || 0;
+      return aNum - bNum;
+    });
+    
+    sortedRecords.forEach(function(r) {
+      detailRows.push([
+        r.date,
+        r.homework_name,
+        (r.students && r.students.student_number) || '--',
+        (r.students && r.students.name) || '',
+        r.status,
+      ]);
+    });
+    
+    // 添加汇总统计行
+    detailRows.push([]);
+    detailRows.push(['统计汇总', '', '', '', '']);
+    const statusCount = { '已交': 0, '优秀': 0, '未交': 0 };
+    sortedRecords.forEach(function(r) {
+      if (statusCount[r.status] !== undefined) {
+        statusCount[r.status]++;
+      }
+    });
+    detailRows.push(['已交', statusCount['已交'], '', '', '']);
+    detailRows.push(['优秀', statusCount['优秀'], '', '', '']);
+    detailRows.push(['未交', statusCount['未交'], '', '', '']);
+    detailRows.push(['总计', sortedRecords.length, '', '', '']);
+    
+    const ws3 = XLSX.utils.aoa_to_sheet(detailRows);
+    ws3['!cols'] = [{ wch: 12 }, { wch: 16 }, { wch: 6 }, { wch: 10 }, { wch: 8 }];
+    XLSX.utils.book_append_sheet(wb, ws3, '作业明细列表');
+
     const cls = await fetchClasses().then(function(list) { return list.find(function(c) { return c.id === classId; }); });
     const clsName = cls ? cls.name : ('班级' + classId);
     const subLabel = subject ? '_' + subject : '';

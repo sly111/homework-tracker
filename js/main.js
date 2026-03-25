@@ -584,6 +584,22 @@ async function init() {
     }
   } catch(e) { console.error('加载科目失败', e); }
 
+  // 从数据库动态加载状态列表，覆盖 config.js 中的静态配置
+  try {
+    var dbStatuses = await fetchStatuses();
+    if (dbStatuses && dbStatuses.length > 0) {
+      CONFIG.statuses = dbStatuses.map(function(s) {
+        return {
+          name: s.name,
+          icon: s.icon || '',
+          color: s.color || '#ffffff',
+          textColor: s.text_color || '#333333',
+          bgColor: s.bg_color || '#f0f0f0'
+        };
+      });
+    }
+  } catch(e) { console.error('加载状态失败', e); }
+
   // 强制登录检查：未登录跳转到登录页
   try {
     const { data: { user } } = await getSupabase().auth.getUser();

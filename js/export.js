@@ -321,6 +321,21 @@ async function exportClassDetailToExcel(classId, startDate, endDate, subject) {
     const ws2 = XLSX.utils.aoa_to_sheet(summaryRows);
     XLSX.utils.book_append_sheet(wb, ws2, '完成率汇总');
 
+    // Sheet 3：学生明细（中文状态文字版）
+    const chineseRows = [headerRow]; // 复用同样的表头
+    students.forEach(function(student) {
+      const row = [student.student_number, student.name || ''];
+      dateHomeworkList.forEach(function(dh) {
+        const status = (recordIndex[student.id] && recordIndex[student.id][dh.date] && recordIndex[student.id][dh.date][dh.hwName]) || '未交';
+        row.push(status); // 直接使用中文状态
+      });
+      chineseRows.push(row);
+    });
+
+    const ws3 = XLSX.utils.aoa_to_sheet(chineseRows);
+    ws3['!cols'] = colWidths;
+    XLSX.utils.book_append_sheet(wb, ws3, '学生明细(文字)');
+
     const cls = await fetchClasses().then(function(list) { return list.find(function(c) { return c.id === classId; }); });
     const clsName = cls ? cls.name : ('班级' + classId);
     const subLabel = subject ? '_' + subject : '';

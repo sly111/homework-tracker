@@ -79,6 +79,7 @@ function showManagePanel() {
   document.getElementById('login-section').style.display = 'none';
   document.getElementById('manage-section').style.display = '';
   loadSubjectList();
+  loadStatusList();
   loadClassList();
 }
 
@@ -119,6 +120,10 @@ function updateBatchDeleteBtn(type) {
   } else if (type === 'classes') {
     var checked = document.querySelectorAll('.class-checkbox:checked');
     var btn = document.getElementById('btn-batch-delete-classes');
+    if (btn) btn.style.display = checked.length > 0 ? '' : 'none';
+  } else if (type === 'statuses') {
+    var checked = document.querySelectorAll('.status-checkbox:checked');
+    var btn = document.getElementById('btn-batch-delete-statuses');
     if (btn) btn.style.display = checked.length > 0 ? '' : 'none';
   }
 }
@@ -648,5 +653,287 @@ async function importStudentsFromExcel(classId, fileInput) {
   } catch(e) {
     showToast('导入失败：' + e.message);
     fileInput.value = '';
+  }
+}
+
+// ============================================================
+// 作业状态管理
+// ============================================================
+
+// 预定义的图标和颜色池（用于新增状态时自动分配）
+const STATUS_ICONS = ['✓', '★', '▲', '●', '■', '◆', '✦', '✿', '❖', '◉'];
+const STATUS_COLORS = [
+  { bg: '#4caf50', text: '#ffffff' },
+  { bg: '#2196f3', text: '#ffffff' },
+  { bg: '#ff9800', text: '#ffffff' },
+  { bg: '#9c27b0', text: '#ffffff' },
+  { bg: '#00bcd4', text: '#ffffff' },
+  { bg: '#e91e63', text: '#ffffff' },
+  { bg: '#795548', text: '#ffffff' },
+  { bg: '#607d8b', text: '#ffffff' },
+  { bg: '#f44336', text: '#ffffff' },
+  { bg: '#3f51b5', text: '#ffffff' },
+];
+
+async function loadStatusList() {
+  const container = document.getElementById('status-list');
+  container.innerHTML = '<div style="color:#999; font-size:13px;">加载中...</div>';
+  try {
+    const data = await fetchStatuses();
+    if (!data || data.length === 0) {
+      container.innerHTML = '<div style="color:#999; font-size:13px;">暂无自定义状态</div>';
+      updateBatchDeleteBtn('statuses');
+      return;
+    }
+    container.innerHTML = data.map(function(s) {
+      return '<div style="display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #f0f0f0;" data-status-id="' + s.id + '">' +
+        '<input type="checkbox" class="status-checkbox" onchange="updateBatchDeleteBtn(\'statuses\')" style="width:16px; height:16px; cursor:pointer; flex-shrink:0;">' +
+        '<span class="status-icon" onclick="editStatusIconInline(' + s.id + ', this, \'' + (s.icon || '').replace(/'/g, "\\'") + '\')" style="font-size:18px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; background:' + (s.bg_color || '#f0f0f0') + '; color:' + (s.color || '#333') + '; border-radius:50%; cursor:pointer; flex-shrink:0;" title="点击修改图标">' + (s.icon || '—') + '</span>' +
+        '<span class="status-name" onclick="renameStatusInline(' + s.id + ', this)" style="flex:1; font-size:14px; cursor:pointer; padding:2px 4px; border-radius:4px;" title="点击重命名">' + s.name + '</span>' +
+        '<span onclick="editStatusColorsInline(' + s.id + ', \'' + (s.bg_color || '#f0f0f0').replace(/'/g, "\\'") + '\', \'' + (s.color || '#333').replace(/'/g, "\\'") + '\')" style="font-size:11px; color:var(--primary); cursor:pointer; padding:2px 8px; border:1px solid var(--primary); border-radius:12px; flex-shrink:0;" title="点击修改颜色">颜色</span>' +
+        '<button onclick="deleteStatus(' + s.id + ', \'' + s.name.replace(/'/g, "\\'") + '\')" style="font-size:11px; color:#f44336; background:none; border:1px solid #f44336; border-radius:12px; padding:2px 8px; cursor:pointer; flex-shrink:0;">删除</button>' +
+        '</div>';
+    }).join('');
+    updateBatchDeleteBtn('statuses');
+  } catch(e) {
+    container.innerHTML = '<div style="color:#f44336; font-size:13px;">加载失败：' + e.message + '</div>';
+  }
+}
+
+async function addStatus() {
+  const nameInput = document.getElementById('new-status-name');
+  const name = nameInput.value.trim();
+  if (!name) { showToast('请输入状态名称'); return; }
+  
+  // 自动分配图标和颜色
+  try {
+    const existingStatuses = await fetchStatuses();
+    const index = existingStatuses ? existingStatuses.length : 0;
+    const icon = STATUS_ICONS[index % STATUS_ICONS.length];
+    const colorSet = STATUS_COLORS[index % STATUS_COLORS.length];
+    
+    await insertStatus(name, icon, colorSet.text, colorSet.text, colorSet.bg);
+    nameInput.value = '';
+    showToast('已新增状态：' + name + '（图标：' + icon + '）');
+    await loadStatusList();
+    // 同步更新 config.js 中的状态配置
+    await reloadConfigStatuses();
+  } catch(e) {
+    showToast('新增失败：' + e.message);
+  }
+}
+
+async function deleteStatus(id, name) {
+  if (!confirm('确定删除状态「' + name + '」？此操作不可恢复。')) return;
+  try {
+    await deleteStatusById(id);
+    showToast('已删除状态：' + name);
+    await loadStatusList();
+    await reloadConfigStatuses();
+  } catch(e) {
+    showToast('删除失败：' + e.message);
+  }
+}
+
+async function batchDeleteStatuses() {
+  var checked = document.querySelectorAll('.status-checkbox:checked');
+  if (checked.length === 0) return;
+  var ids = Array.from(checked).map(function(cb) {
+    return parseInt(cb.closest('[data-status-id]').getAttribute('data-status-id'));
+  });
+  if (!confirm('确定批量删除选中的 ' + ids.length + ' 个状态？此操作不可恢复。')) return;
+  try {
+    await deleteManyStatuses(ids);
+    showToast('已删除 ' + ids.length + ' 个状态');
+    await loadStatusList();
+    await reloadConfigStatuses();
+  } catch(e) {
+    showToast('批量删除失败：' + e.message);
+  }
+}
+
+// 重命名状态（内联编辑）
+function renameStatusInline(id, el) {
+  if (el.tagName === 'INPUT') return;
+  var oldName = el.textContent;
+  var input = document.createElement('input');
+  input.type = 'text';
+  input.value = oldName;
+  input.style.cssText = 'flex:1; font-size:14px; border:1px solid var(--primary); border-radius:4px; padding:2px 6px; outline:none;';
+  el.parentNode.replaceChild(input, el);
+  input.focus();
+  input.select();
+
+  async function save() {
+    var newName = input.value.trim();
+    if (!newName || newName === oldName) {
+      var span = document.createElement('span');
+      span.className = 'status-name';
+      span.onclick = function() { renameStatusInline(id, span); };
+      span.style.cssText = 'flex:1; font-size:14px; cursor:pointer; padding:2px 4px; border-radius:4px;';
+      span.title = '点击重命名';
+      span.textContent = oldName;
+      input.parentNode.replaceChild(span, input);
+      return;
+    }
+    try {
+      await updateStatusName(id, newName);
+      showToast('已重命名为：' + newName);
+      await loadStatusList();
+      await reloadConfigStatuses();
+    } catch(e) {
+      showToast('重命名失败：' + e.message);
+      await loadStatusList();
+    }
+  }
+
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { input.blur(); }
+    if (e.key === 'Escape') { input.value = oldName; input.blur(); }
+  });
+}
+
+// 编辑图标（内联编辑）
+function editStatusIconInline(id, el, oldIcon) {
+  if (el.tagName === 'INPUT') return;
+  var input = document.createElement('input');
+  input.type = 'text';
+  input.value = oldIcon;
+  input.style.cssText = 'width:32px; height:32px; font-size:18px; text-align:center; border:2px solid var(--primary); border-radius:50%; outline:none; background:#fff; cursor:pointer; flex-shrink:0;';
+  el.parentNode.replaceChild(input, el);
+  input.focus();
+  input.select();
+
+  async function save() {
+    var newIcon = input.value.trim();
+    try {
+      await updateStatusIcon(id, newIcon);
+      showToast('图标已更新');
+      await loadStatusList();
+      await reloadConfigStatuses();
+    } catch(e) {
+      showToast('更新失败：' + e.message);
+      await loadStatusList();
+    }
+  }
+
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { input.blur(); }
+    if (e.key === 'Escape') { input.value = oldIcon; input.blur(); }
+  });
+}
+
+// 编辑颜色（弹出选择）
+function editStatusColorsInline(id, oldBgColor, oldTextColor) {
+  // 创建简单的颜色选择弹窗
+  var modal = document.createElement('div');
+  modal.id = 'color-picker-modal';
+  modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000; padding:16px;';
+  
+  var panel = document.createElement('div');
+  panel.style.cssText = 'background:#fff; border-radius:16px; padding:20px; width:100%; max-width:320px;';
+  
+  panel.innerHTML = 
+    '<div style="font-size:16px; font-weight:600; margin-bottom:16px;">选择颜色方案</div>' +
+    '<div style="margin-bottom:16px;">' +
+      '<div style="font-size:13px; color:#666; margin-bottom:8px;">背景色</div>' +
+      '<div id="bg-color-options" style="display:flex; flex-wrap:wrap; gap:8px;"></div>' +
+    '</div>' +
+    '<div style="margin-bottom:20px;">' +
+      '<div style="font-size:13px; color:#666; margin-bottom:8px;">文字颜色</div>' +
+      '<div id="text-color-options" style="display:flex; flex-wrap:wrap; gap:8px;"></div>' +
+    '</div>' +
+    '<div style="display:flex; gap:10px;">' +
+      '<button id="btn-cancel-color" style="flex:1; height:40px; font-size:14px; background:#f0f0f0; color:#666; border:none; border-radius:8px; cursor:pointer;">取消</button>' +
+      '<button id="btn-save-color" style="flex:1; height:40px; font-size:14px; background:var(--primary); color:#fff; border:none; border-radius:8px; cursor:pointer;">保存</button>' +
+    '</div>';
+  
+  modal.appendChild(panel);
+  document.body.appendChild(modal);
+  
+  var selectedBg = oldBgColor;
+  var selectedText = oldTextColor;
+  
+  // 生成背景色选项
+  var bgContainer = document.getElementById('bg-color-options');
+  STATUS_COLORS.forEach(function(c) {
+    var btn = document.createElement('button');
+    btn.style.cssText = 'width:40px; height:40px; border-radius:50%; border:3px solid ' + (c.bg === selectedBg ? 'var(--primary)' : 'transparent') + '; background:' + c.bg + '; cursor:pointer;';
+    btn.onclick = function() {
+      selectedBg = c.bg;
+      selectedText = c.text;
+      // 更新选中样式
+      Array.from(bgContainer.children).forEach(function(child) {
+        child.style.borderColor = 'transparent';
+      });
+      btn.style.borderColor = 'var(--primary)';
+      // 自动同步文字颜色
+      Array.from(textContainer.children).forEach(function(child) {
+        child.style.borderColor = child.style.backgroundColor === selectedText ? 'var(--primary)' : 'transparent';
+      });
+    };
+    bgContainer.appendChild(btn);
+  });
+  
+  // 生成文字色选项
+  var textContainer = document.getElementById('text-color-options');
+  ['#ffffff', '#333333', '#000000'].forEach(function(c) {
+    var btn = document.createElement('button');
+    btn.style.cssText = 'width:40px; height:40px; border-radius:50%; border:3px solid ' + (c === selectedText ? 'var(--primary)' : '#ddd') + '; background:' + c + '; cursor:pointer;';
+    if (c === '#ffffff') btn.style.boxShadow = 'inset 0 0 0 1px #ddd';
+    btn.onclick = function() {
+      selectedText = c;
+      Array.from(textContainer.children).forEach(function(child) {
+        child.style.borderColor = '#ddd';
+      });
+      btn.style.borderColor = 'var(--primary)';
+    };
+    textContainer.appendChild(btn);
+  });
+  
+  // 事件绑定
+  document.getElementById('btn-cancel-color').onclick = function() {
+    document.body.removeChild(modal);
+  };
+  
+  document.getElementById('btn-save-color').onclick = async function() {
+    try {
+      await updateStatus(id, { bg_color: selectedBg, color: selectedText, text_color: selectedText });
+      showToast('颜色已更新');
+      document.body.removeChild(modal);
+      await loadStatusList();
+      await reloadConfigStatuses();
+    } catch(e) {
+      showToast('更新失败：' + e.message);
+    }
+  };
+  
+  // 点击背景关闭
+  modal.onclick = function(e) {
+    if (e.target === modal) {
+      document.body.removeChild(modal);
+    }
+  };
+}
+
+// 重新加载配置中的状态（用于其他页面同步）
+async function reloadConfigStatuses() {
+  try {
+    var statuses = await fetchStatuses();
+    if (statuses && statuses.length > 0) {
+      CONFIG.statuses = statuses.map(function(s) {
+        return {
+          name: s.name,
+          icon: s.icon || '',
+          color: s.color || '#333333',
+          textColor: s.text_color || '#333333',
+          bgColor: s.bg_color || '#f0f0f0'
+        };
+      });
+    }
+  } catch(e) {
+    console.error('重新加载状态配置失败:', e);
   }
 }

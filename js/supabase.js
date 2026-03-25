@@ -483,3 +483,81 @@ async function deleteManyClasses(ids) {
     await deleteClassById(ids[i]);
   }
 }
+// ============================================================
+// 作业状态管理（管理员用）
+// ============================================================
+
+async function fetchStatuses() {
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('statuses')
+    .select('*')
+    .order('display_order');
+  if (error) throw error;
+  return data;
+}
+
+async function insertStatus(name, icon, color, textColor, bgColor) {
+  const sb = getSupabase();
+  // 获取当前最大 display_order
+  const { data: existing } = await sb.from('statuses').select('display_order').order('display_order', { ascending: false }).limit(1);
+  const nextOrder = existing && existing.length > 0 ? existing[0].display_order + 1 : 1;
+  const { data, error } = await sb
+    .from('statuses')
+    .insert({
+      name: name.trim(),
+      icon: icon || '',
+      color: color || '#ffffff',
+      text_color: textColor || '#333333',
+      bg_color: bgColor || '#f0f0f0',
+      display_order: nextOrder
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function updateStatus(id, updates) {
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('statuses')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function updateStatusName(id, name) {
+  return updateStatus(id, { name: name.trim() });
+}
+
+async function updateStatusIcon(id, icon) {
+  return updateStatus(id, { icon: icon });
+}
+
+async function updateStatusColor(id, color) {
+  return updateStatus(id, { color: color });
+}
+
+async function updateStatusTextColor(id, textColor) {
+  return updateStatus(id, { text_color: textColor });
+}
+
+async function updateStatusBgColor(id, bgColor) {
+  return updateStatus(id, { bg_color: bgColor });
+}
+
+async function deleteStatusById(id) {
+  const sb = getSupabase();
+  const { error } = await sb.from('statuses').delete().eq('id', id);
+  if (error) throw error;
+}
+
+async function deleteManyStatuses(ids) {
+  const sb = getSupabase();
+  const { error } = await sb.from('statuses').delete().in('id', ids);
+  if (error) throw error;
+}
